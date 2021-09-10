@@ -1,0 +1,77 @@
+buildscript {
+    repositories {
+        maven { url "https://plugins.gradle.org/m2/" }
+        maven { url "https://smartbearsoftware.com/repository/maven2/" }
+    }
+}
+
+plugins {
+    id 'java'
+    id 'io.github.daggerok.soapui-testrunner' version '5.3.1-RC-4'
+}
+
+group 'guru.qa'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+configurations {
+    jaxb
+}
+
+dependencies {
+    jaxb("org.glassfish.jaxb:jaxb-xjc:3.0.2")
+    implementation 'javax.xml.bind:jaxb-api:2.3.0'
+    implementation 'com.sun.xml.bind:jaxb-core:2.3.0'
+    implementation 'com.sun.xml.bind:jaxb-impl:2.3.0'
+    implementation 'javax.activation:activation:1.1'
+    implementation 'org.glassfish.jaxb:jaxb-runtime:2.3.0'
+    implementation 'jakarta.xml.bind:jakarta.xml.bind-api:3.0.1'
+    implementation 'javax.xml.soap:javax.xml.soap-api:1.4.0'
+    implementation 'com.sun.xml.messaging.saaj:saaj-impl:1.5.1'
+    testImplementation 'io.rest-assured:rest-assured:4.2.0'
+    testImplementation 'com.fasterxml.jackson.core:jackson-databind:2.11.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+}
+
+testrunner {
+    projectFile = 'qa-guru-soapui-example-soapui-project.xml'
+    outputFolder = 'build/soapui/'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'build/generated-sources/jaxb'
+        }
+    }
+}
+
+task genJaxb {
+    ext.sourcesDir = "${buildDir}/generated-sources/jaxb"
+    ext.schema = "src/test/resources/countries.xsd"
+
+    outputs.dir sourcesDir
+
+    doLast() {
+        project.ant {
+            taskdef name: "xjc", classname: "com.sun.tools.xjc.XJCTask",
+                    classpath: configurations.jaxb.asPath
+            mkdir(dir: sourcesDir)
+
+            xjc(destdir: sourcesDir, schema: schema) {
+                arg(value: "-wsdl")
+                produces(dir: sourcesDir, includes: "**/*.java")
+            }
+        }
+    }
+}
+
+compileJava.dependsOn genJaxb
+
+test {
+    useJUnitPlatform()
+}
